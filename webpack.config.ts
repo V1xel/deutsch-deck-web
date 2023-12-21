@@ -1,7 +1,7 @@
-import { CustomWebpackBrowserSchema, TargetOptions } from '@angular-builders/custom-webpack';
 import * as webpack from 'webpack';
+import { config } from 'dotenv'
 
-let customEnvConfig = require('dotenv')?.config()?.parsed || {};
+let customEnvConfig = config().parsed || {};
 
 function stringifyValues(object = {}) {
     return Object.entries(object).reduce(
@@ -13,21 +13,25 @@ function stringifyValues(object = {}) {
 customEnvConfig = { ...stringifyValues(process.env), ...stringifyValues(customEnvConfig) };
 
 export default (
-    config: webpack.Configuration,
-    options: CustomWebpackBrowserSchema,
-    targetOptions: TargetOptions
+    config: webpack.Configuration
 ) => {
-    config.module?.rules?.push(
-        {
-            test: /\.(graphql|gql)$/,
-            exclude: /node_modules/,
-            loader: '@graphql-tools/webpack-loader',
-        }
-    )
+    if (config.module &&
+        config.resolve &&
+        config.resolve.extensions &&
+        config.module.rules) {
+        config.module.rules.push(
+            {
+                test: /\.(graphql|gql)$/,
+                exclude: /node_modules/,
+                loader: '@graphql-tools/webpack-loader',
+            }
+        )
+        config.resolve.extensions.push('.graphql')
+    }
 
-    config.resolve?.extensions?.push('.graphql')
-    config.plugins?.push(new webpack.DefinePlugin({ 'process.env': customEnvConfig }))
-    if (config.resolve)
+    if (config.resolve &&
+        config.plugins) {
+        config.plugins.push(new webpack.DefinePlugin({ 'process.env': customEnvConfig }))
         config.resolve.fallback = {
             "fs": false,
             "tls": false,
@@ -41,6 +45,7 @@ export default (
             "os": false,
             "crypto-browserify": false,
         }
+    }
 
     return config;
 };
